@@ -38,6 +38,9 @@ tree.age_scale<-function(ages.table, scale){
 
 tree.age<-function(tree, age, order='past'){
 
+        age=max(dist.nodes(tree)[, Ntip(tree)+1])
+
+
 #CALCULATE THE EDGES AGE
 
     if(age == 0) {
