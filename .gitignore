@@ -1,0 +1,18 @@
+## LaTeX + Sweave
+
+*.aux
+*.bbl
+*.blg
+*..fdb_latexmk
+*.fls
+*.log
+*.out
+*.Rnw
+*.synctex.gz
+*.tex
+*.toc
+*.bib
+*.bst
+
+# R
+.Rapp.history
