@@ -1,0 +1,481 @@
+\documentclass{article}
+\usepackage[sc]{mathpazo}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\usepackage{natbib}
+\usepackage[utf8]{inputenc}
+\geometry{verbose,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
+\setcounter{secnumdepth}{2}
+\setcounter{tocdepth}{2}
+\usepackage{url}
+\usepackage[unicode=true,pdfusetitle,
+ bookmarks=true,bookmarksnumbered=true,bookmarksopen=true,bookmarksopenlevel=2,
+ breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
+ {hyperref}
+\hypersetup{
+ pdfstartview={XYZ null null 1}}
+
+\begin{document}
+<<setup, include=FALSE, cache=FALSE>>=
+library(knitr)
+# set global chunk options
+opts_chunk$set(fig.path='figure/minimal-', fig.align='center', fig.show='hold')
+options(formatR.arrow=TRUE,width=90)
+@
+
+
+\title{MrBayes practical (with primates!)}
+
+\author{Thomas Guillerme\\\href{mailto:t.guillerme@imperial.ac.uk}{t.guillerme@imperial.ac.uk}}
+
+\maketitle
+
+\tableofcontents
+
+\section{Installing MrBayes}
+You can download \textbf{MrBayes} \citep{Ronquist2012mrbayes} for any platform (\href{http://mrbayes.sourceforge.net/}{here}).
+A simple tutorial is available (\href{http://mrbayes.sourceforge.net/wiki/index.php/Tutorial_3.2}{here}) along with a manual (\href{http://mrbayes.sourceforge.net/wiki/index.php/Manual_3.2}{here}).
+
+\section{The data}
+For this practical we are going two files, one matrix containing phylogenetic information (\texttt{NEXUS} format; \texttt{.nex}) from \cite{hayasaka1988molecular} ad \cite{stevens2013palaeontological} and a second file being a MrBayes executable containing the phylogenetic information and MrBayes instructions:
+\begin{itemize}
+\item{\texttt{TotalEvidence\_Primates.nex}}: alignment containing 898 molecular characters and 191 morphological ones for 20 taxa.
+\item{\texttt{TotalEvidence\_Primates\_exe.nex}}: the same alignment but with more detailed MrBayes instructions.
+\end{itemize}
+
+\section{Starting MrBayes}
+To start MrBayes, simply double click on the executable or, for terminal users, enter \texttt{mb} in the terminal.
+Then start running a log file to save all your analysis by using the \texttt{log} command:
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{log} start filename=\hlstr{MrBayes_practical.txt}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\section{Running the analysis}
+\subsection{Reading the data}
+We can read the data into MrBayes by using the command \texttt{execute} (make sure you're in the right working directory!).
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{execute} \hlstr{TotalEvidence\_Primates.nex}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+We can now manually manipulate some characteristic of our data file, for example by setting an outgroup:
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{outgroup} \hlstr{Lemur_catta}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent Or by creating the group that contains only the fossil taxa (here we define the taxa number 13 to 20 to be fossils).
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{taxset} \hlstr{fossils}=13-20
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent And some topological constraints to make the analysis a bit faster and to allow to calibrate these groups in the node calibration analysis.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{constraint} \hlstr{root}=\hlstr{1-.}
+\hlkwd{constraint} \hlstr{Haplorhini}=\hlstr{2-.}
+\hlkwd{constraint} \hlstr{Simiiformes}=\hlstr{3-.}
+\hlkwd{constraint} \hlstr{Catarrhini}=\hlstr{3-11}
+\hlkwd{constraint} \hlstr{Hominidae}=\hlstr{3-7}
+\hlkwd{constraint} \hlstr{Cercopithecidae}=\hlstr{8-11}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsection{Setting the data partitions}
+We can then partition our data by using \texttt{charset}.
+We need a DNA and a morphology partition.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{charset} \hlstr{DNA}=\hlstr{1-898}
+\hlkwd{charset} \hlstr{morphology}=\hlstr{899-1089}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\indent Now that the partitions are identified we need to specify that we want to use both partitions.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{partition} \hlstr{my_parition}=\hlstr{2}: \hlstr{DNA}, \hlstr{morphology}
+set \hlkwd{partition}=\hlstr{my_parition}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsection{Setting the evolutionary models}
+Now that our data are ready to use, we have to parametrise our phylogenetic model.
+We need to set up a substitution model for each partition and (later on) a clock model for dating our phylogeny.
+
+
+For the molecular data, we can go with a \textbf{GTR} model (General Time Reversible).
+This model allows each transition rate between each nucleotide to be different (see \href{https://en.wikipedia.org/wiki/Models_of_DNA_evolution}{here for more models and more (easy) explanations}).
+To simplify the model, we can also set a finite number of transition rates categories (for example, really slow, slow, medium, fast, etc.) that will follow a certain distribution.
+Here we are going to use the \textbf{Gamma} ($\Gamma$) distribution with 4 distinct categories.
+
+\subsubsection*{Model for the molecular data (GTR + 4$\Gamma$)}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{lset} applyto=\hlstr{(1)} nucmodel=\hlstr{4by4} nst=\hlstr{6} rates=\hlstr{gamma} Ngammacat=\hlstr{4} covarion=\hlstr{no}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent For the morphological data, we are going to use the M\textit{k} model that assumes an equal transition rate between each state for each character.
+Again, to simplify the model, we will set a 4 transition rates categories following a Gamma distribution.
+
+\subsubsection*{Model for the molecular data (M\textit{k} + 4$\Gamma$)}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{lset} applyto=\hlstr{(2)} nst=\hlstr{1} rates=\hlstr{gamma} Ngammacat=\hlstr{4}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent We can look at our model settings at any time by typing the following:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+help \hlkwd{lset}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+
+\subsection{Setting the priors}
+We can also set some Bayesian priors for the analysis.
+Most of the priors can be set to be flat (i.e. uninformative: the information is only a prior in a Bayesian sense and is not giving an \textit{a priori} to our analysis).
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+help \hlkwd{prset}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent We are just going to change the rate priors to be variable.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{prset} applyto=\hlstr{(all)} ratepr=\hlstr{variable}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsection{Summarising the parameters}
+Finally, we can summarise our whole model parameters by typing the following:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{showmodel}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+Because all these manipulations only concern the data set, it might be a good idea to save them directly in the \texttt{TotalEvidence\_Primates.nex} file so that we don't have to retype them each time prior to any dating analysis.
+This can be done between the following tags at the end of your nexus document :
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+begin mrbayes;
+    ...
+end;
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent Using the indentation is a good practice for emphasizing that the \texttt{...} will be executed within the \texttt{begin mrbayes} tag.
+You can add all the commands below in place of the \texttt{...} and \textbf{finish all command lines by a semi-colon (\texttt{;})}.
+You can also use the square brackets (\texttt{[]}) to write down some comments, they will be ignored by MrBayes.
+
+\subsection{The tip-dated analysis}
+\subsubsection{Set up the tip ages}
+The first step in a Tip-dating analysis is to set up the age of the tips.
+We can only inform the fossils ages since the living species have an aged assumed to be 0 million years old by default.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{calibrate} \hlstr{Catopithecus_browni}=\hlstr{Fixed(36)}
+\hlkwd{calibrate} \hlstr{Aegyptopithecus_zeuxis}=\hlstr{Fixed(33)}
+\hlkwd{calibrate} \hlstr{Dendropithecus_macinnesi}=\hlstr{Fixed(20)}
+\hlkwd{calibrate} \hlstr{Noropithecus_bulukensis}=\hlstr{Fixed(18)}
+\hlkwd{calibrate} \hlstr{Victoriapithecus_macinnesi}=\hlstr{Fixed(15)}
+\hlkwd{calibrate} \hlstr{Proconsul_major}=\hlstr{Fixed(20)}
+\hlkwd{calibrate} \hlstr{Afropithecus_turkanensis}=\hlstr{Fixed(16)}
+\hlkwd{calibrate} \hlstr{Morotopithecus_bishopi}=\hlstr{Fixed(18)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent We can also set up some calibrations to fix the age of the root and the Haplorhini group.
+Because we are not sure of the age of fossils, we can use a simple uniform distribution between the oldest and the youngest age estimate.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{calibrate} \hlstr{root}=\hlstr{uniform(60.99,76.72)}
+\hlkwd{calibrate} \hlstr{Haplorhini}=\hlstr{uniform(57.62,69.59)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{Set up the clock model}
+Now we can set up the clock model by specifying that the branch length should represent time which is uniformly distributed along the branches (i.e. one unit of branch length = one unit of time across the whole tree; \texttt{brlenspr=clock:uniform}).
+We can then set the clock to be relaxed by using the \textbf{IGR} (Independent Gamma rates) model for the clock rate variation.
+This model assumes an independent rate on each branch distributed following a Gamma distribution (\texttt{clockvarpr=igr}).
+Finally we can set some node calibration using the calibration we set up before.
+
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{prset} brlenspr=\hlstr{clock:uniform}
+\hlkwd{prset} clockvarpr=\hlstr{igr}
+\hlkwd{prset} nodeagepr=\hlstr{calibrated}
+\hlkwd{prset} clockratepr=\hlstr{normal(0.01,0.005)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+\noindent Along with our topological constraint:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{prset} topologypr=\hlstr{constraints(root, Haplorhini)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{Run the analysis}
+Finally we can run the analysis by setting up some of the MCMC parameters: the number of chains (\texttt{nchains=4}), the number of independent runs (\texttt{nruns=2}), which generations to sample (\texttt{samplefreq=1000}), which ones to print (\texttt{printfr=100}) and when to run the convergence diagnosis between both chains (\texttt{diagnfreq=2500}).
+We can finally run the MCMC for a certain number of generations (1500000!) and see if the two chains converge.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{mcmcp} temp=\hlstr{0.1} nchain=\hlstr{4} samplefreq=\hlstr{1000} printfr=\hlstr{100} nruns=\hlstr{2} diagnfreq=\hlstr{2500}
+\hlkwd{mcmcp} filename=\hlstr{Primates-tip_dating}
+\hlkwd{mcmc} ngen=\hlstr{150000} Stoprule=\hlstr{YES} stopval=\hlstr{0.01}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{Save the tree}
+Ones the analysis is over, we can save the parameters estimations by typing:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{sump} filename=\hlstr{Primates-tip_dating} relburnin=\hlstr{YES} burninfrac=\hlstr{0.25}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent Each parameters are saved in the \texttt{Primates-tip\_dating.pstat} file.
+
+\noindent As well as the tree by typing:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{sumt} filename=\hlstr{Primates-tip_dating} relburnin=\hlstr{YES} burninfrac=\hlstr{0.25}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent The consensus tree is saved in the \texttt{Primates-tip\_dating.con.tre} file.
+
+\subsection{The calibrated analysis}
+Secondly we want to compare our results to the node calibration analysis (without fossils).
+Most parameters are the same so they will not be described in details.
+
+\subsubsection{Remove the fossil species}
+We first have to remove our fossil partition:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{delete} \hlstr{fossils}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{Set up the calibrations}
+We then need to set up our calibration (with uniform distributions for accounting for uncertainty).
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{calibrate} \hlstr{root}=\hlstr{uniform(60.99,76.72)}
+\hlkwd{calibrate} \hlstr{Haplorhini}=\hlstr{uniform(57.62,69.59)}
+\hlkwd{calibrate} \hlstr{Simiiformes}=\hlstr{uniform(33.55,49.48)}
+\hlkwd{calibrate} \hlstr{Catarrhini}=\hlstr{uniform(57.62,69.59)}
+\hlkwd{calibrate} \hlstr{Hominidae}=\hlstr{uniform(11.04,20.8)}
+\hlkwd{calibrate} \hlstr{Cercopithecidae}=\hlstr{uniform(8.93,18.27)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{Set up the clock model}
+We can use the same parameters as for the tip-dating analysis.
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{prset} brlenspr=\hlstr{clock:uniform}
+\hlkwd{prset} clockvarpr=\hlstr{igr}
+\hlkwd{prset} nodeagepr=\hlstr{calibrated}
+\hlkwd{prset} clockratepr=\hlstr{normal(0.01,0.005)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent Along with our topological constraint:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{prset} topologypr=\hlstr{constraints(root, Haplorhini)}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+%\hlkwd{prset} topologypr=\hlstr{constraints(root, Haplorhini, Simiiformes, Catarrhini, Hominidae, Cercopithecidae)}
+%\hlkwd{prset} topologypr=\hlstr{constraints(root, Haplorhini)}
+
+
+\subsubsection{Run the analysis}
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{mcmcp} temp=\hlstr{0.1} nchain=\hlstr{4} samplefreq=\hlstr{1000} printfr=\hlstr{100} nruns=\hlstr{2} diagnfreq=\hlstr{2500}
+\hlkwd{mcmcp} filename=\hlstr{Primates-node_dating}
+\hlkwd{mcmc} ngen=\hlstr{150000} Stoprule=\hlstr{YES} stopval=\hlstr{0.01}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\subsubsection{Save the tree}
+
+Summarising the parameters:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{sump} filename=\hlstr{Primates-node_dating} relburnin=\hlstr{YES} burninfrac=\hlstr{0.25}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\noindent Summarising the trees:
+\begin{knitrout}
+\definecolor{shadecolor}{rgb}{0.969, 0.969, 0.969}\color{fgcolor}\begin{kframe}
+\begin{alltt}
+\hlkwd{sumt} filename=\hlstr{Primates-node_dating} relburnin=\hlstr{YES} burninfrac=\hlstr{0.25}
+\end{alltt}
+\end{kframe}
+\end{knitrout}
+
+\section{Comparing both trees}
+We can now use \texttt{R} to compare both trees and see what is the effect of the both methods.
+
+\subsection{Load the packages}
+<<launchR, eval=FALSE>>=
+Theses are the pacakges we will be using.
+## Installing the packages
+if(!require(ape)) install.packages("ape")
+if(!require(devtools)) install.packages("devtools")
+library(ape, devtools)
+install_github("TGuillerme/dispRity", ref = "release")
+@
+
+\subsection{Import the trees}
+First we need to import the trees in \texttt{R}.
+Note that here I am using two pre-made trees, the ideal would be to use your own trees!
+<<read.trees, eval=FALSE>>=
+## Reading the trees
+## WARNING: Make sure you're in the right folder! Use setwd(), getwd() and
+## list.files() to navigate.
+node_calibrated_tree <- read.nexus("Primates-node_dating.bkp.tre")
+tip_dated_tree       <- read.nexus("Primates-tip_dating.bkp.tre")
+
+## Removing the fossils from the tip dated tree
+tip_dated_tree_living <- drop.tip(tip_dated_tree, tip = c("Catopithecus_browni",
+  "Aegyptopithecus_zeuxis", "Dendropithecus_macinnesi",
+  "Noropithecus_bulukensis", "Victoriapithecus_macinnesi", "Proconsul_major",
+  "Afropithecus_turkanensis", "Morotopithecus_bishopi"))
+@
+
+\subsection{Comparing the trees}
+Then we can compare the branch length and the topology from each tree:
+
+<<tree.ages, eval=FALSE>>=
+## Calculate the age difference between both trees for each nodes
+library(dispRity)
+node_calibrated_ages  <- tree.age(node_calibrated_tree)
+tip_dated_living_ages <- tree.age(tip_dated_tree_living)
+tip_dated_ages        <- tree.age(tip_dated_tree)
+@
+
+\noindent We can now plot the two trees (including the two versions of the tip dated tree):
+
+<<trees.plot, eval=FALSE>>=
+## Setting the graphical parameters
+op <- par(mfrow = (c(1,3)))
+
+## Plotting the node calibrated tree
+plot(node_calibrated_tree, main = "node calibrated", cex=0.7)
+## Adding the age of the nodes calculates using tree.age()
+nodelabels(text = round(node_calibrated_ages$ages[13:23], 2), cex = 0.5)
+## Adding the time ruler
+axisPhylo()
+
+## Plotting the tip dated tree without fossils (with the labels facing the
+## calibrated one)
+plot(tip_dated_tree_living, main = "tip-dated (living only)", direction = "l",
+  cex=0.7)
+## Adding the age of the nodes calculates using tree.age()
+nodelabels(text = round(tip_dated_living_ages$ages[13:23], 2), cex = 0.5)
+## Adding the time ruler
+axisPhylo()
+
+## Plotting the tip dated tree with fossils
+plot(tip_dated_tree, main = "tip-dated", cex=0.7)
+## Adding the age of the nodes calculates using tree.age()
+nodelabels(text = round(tip_dated_ages$ages[21:38], 2), cex = 0.5)
+## Adding the time ruler
+axisPhylo()
+
+## Resetting the graphical parameters to default
+par(op)
+@
+
+\section{Questions}
+\begin{enumerate}
+\item What are the main differences between the trees? Are their also differences in parameters estimations?
+\item Which one of these trees is the best? For which purpose is it better suited?
+\item Can you see some caveats for each method?
+\item Which method took longer and why?
+\end{enumerate}
+
+
+\bibliographystyle{sysbio}
+\bibliography{References}
+
+\end{document}
+\end{document}
+
+
+
+% Node dating ~ 145000 gen for short 113t
